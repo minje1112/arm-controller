@@ -1,14 +1,14 @@
 #include <Servo.h>
-#include <ctype.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
 
 static const byte SERVO_COUNT = 4;
 static const byte SERVO_PINS[SERVO_COUNT] = {3, 5, 6, 9};
 static const byte DEFAULT_ANGLE = 90;
 static const unsigned long SERIAL_TIMEOUT_MS = 20;
 static const byte SERIAL_BUFFER_SIZE = 32;
+static const byte MIN_COMMAND_LENGTH = 3;
+static const byte SERVO_INDEX_OFFSET = 1;
+static const byte MIN_SERVO_ANGLE = 0;
+static const byte MAX_SERVO_ANGLE = 180;
 
 Servo servos[SERVO_COUNT];
 
@@ -71,7 +71,7 @@ void flushUntilNewline() {
 }
 
 ParsedCommand parseCommand(const char *line) {
-  if (line == NULL || strlen(line) < 3 || line[0] != 'S') {
+  if (line == NULL || strlen(line) < MIN_COMMAND_LENGTH || line[0] != 'S') {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
@@ -97,18 +97,18 @@ ParsedCommand parseCommand(const char *line) {
 
   long servoValue = strtol(servoToken, NULL, 10);
   long angleValue = strtol(angleToken, NULL, 10);
-  if (servoValue < 0 || servoValue > INT_MAX || angleValue < 0 || angleValue > INT_MAX) {
-    return {PARSE_ERR_FORMAT, 0, 0};
+  if (servoValue < SERVO_INDEX_OFFSET || servoValue > SERVO_COUNT) {
+    return {PARSE_ERR_SERVO, 0, (int)angleValue};
   }
 
-  int servoIndex = (int)servoValue - 1;
+  if (angleValue < MIN_SERVO_ANGLE || angleValue > MAX_SERVO_ANGLE) {
+    return {PARSE_ERR_ANGLE, (int)servoValue - SERVO_INDEX_OFFSET, 0};
+  }
+
+  int servoIndex = (int)servoValue - SERVO_INDEX_OFFSET;
   int angle = (int)angleValue;
   if (servoIndex < 0 || servoIndex >= SERVO_COUNT) {
     return {PARSE_ERR_SERVO, servoIndex, angle};
-  }
-
-  if (angle < 0 || angle > 180) {
-    return {PARSE_ERR_ANGLE, servoIndex, angle};
   }
 
   return {PARSE_OK, servoIndex, angle};
