@@ -1,5 +1,6 @@
 #include <Servo.h>
 #include <ctype.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -80,7 +81,7 @@ ParsedCommand parseCommand(const char *line) {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
-  byte servoTokenLength = separator - (line + 1);
+  size_t servoTokenLength = separator - (line + 1);
   if (servoTokenLength >= SERIAL_BUFFER_SIZE) {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
@@ -94,8 +95,14 @@ ParsedCommand parseCommand(const char *line) {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
-  int servoIndex = atoi(servoToken) - 1;
-  int angle = atoi(angleToken);
+  long servoValue = strtol(servoToken, NULL, 10);
+  long angleValue = strtol(angleToken, NULL, 10);
+  if (servoValue > INT_MAX || angleValue > INT_MAX) {
+    return {PARSE_ERR_FORMAT, 0, 0};
+  }
+
+  int servoIndex = (int)servoValue - 1;
+  int angle = (int)angleValue;
   if (servoIndex < 0 || servoIndex >= SERVO_COUNT) {
     return {PARSE_ERR_SERVO, servoIndex, angle};
   }
