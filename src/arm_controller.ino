@@ -73,6 +73,7 @@ ParsedCommand parseCommand() {
 
 void setup() {
   Serial.begin(115200);
+  // Keep command reads responsive for short serial command lines.
   Serial.setTimeout(20);
   attachServos();
   Serial.println(F("4-servo arm controller ready"));
@@ -90,7 +91,7 @@ void loop() {
     } else if (command.result == PARSE_ERR_SERVO) {
       Serial.println(F("ERR: Servo index out of range (1-4)"));
     } else {
-      Serial.println(F("ERR: Angle out of range"));
+      Serial.println(F("ERR: Angle out of range (0-180)"));
     }
     return;
   }
