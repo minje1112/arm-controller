@@ -1,9 +1,13 @@
 #include <Servo.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 static const byte SERVO_COUNT = 4;
 static const byte SERVO_PINS[SERVO_COUNT] = {3, 5, 6, 9};
 static const byte DEFAULT_ANGLE = 90;
 static const unsigned long SERIAL_TIMEOUT_MS = 20;
+static const byte SERIAL_BUFFER_SIZE = 32;
 
 Servo servos[SERVO_COUNT];
 
@@ -27,14 +31,14 @@ void attachServos() {
   }
 }
 
-bool isAllDigits(const String &value) {
-  unsigned int length = value.length();
+bool isAllDigits(const char *value) {
+  unsigned int length = strlen(value);
   if (length == 0) {
     return false;
   }
 
   for (unsigned int i = 0; i < length; i++) {
-    if (!isDigit(value.charAt(i))) {
+    if (!isdigit((unsigned char)value[i])) {
       return false;
     }
   }
@@ -42,27 +46,49 @@ bool isAllDigits(const String &value) {
   return true;
 }
 
-ParsedCommand parseCommand() {
-  String line = Serial.readStringUntil('\n');
-  line.trim();
-  if (line.length() < 3 || line.charAt(0) != 'S') {
+void trimInPlace(char *value) {
+  char *start = value;
+  while (*start != '\0' && isspace((unsigned char)*start)) {
+    start++;
+  }
+
+  if (start != value) {
+    memmove(value, start, strlen(start) + 1);
+  }
+
+  size_t length = strlen(value);
+  while (length > 0 && isspace((unsigned char)value[length - 1])) {
+    value[--length] = '\0';
+  }
+}
+
+ParsedCommand parseCommand(const char *line) {
+  if (line == NULL || strlen(line) < 3 || line[0] != 'S') {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
-  int separator = line.indexOf(':');
+  const char *separator = strchr(line, ':');
   // Require at least one digit for servo token and angle token.
-  if (separator <= 1 || separator >= (int)line.length() - 1) {
+  if (separator == NULL || separator <= line + 1 || *(separator + 1) == '\0') {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
-  String servoToken = line.substring(1, separator);
-  String angleToken = line.substring(separator + 1);
+  byte servoTokenLength = separator - (line + 1);
+  if (servoTokenLength >= SERIAL_BUFFER_SIZE) {
+    return {PARSE_ERR_FORMAT, 0, 0};
+  }
+
+  char servoToken[SERIAL_BUFFER_SIZE];
+  memcpy(servoToken, line + 1, servoTokenLength);
+  servoToken[servoTokenLength] = '\0';
+
+  const char *angleToken = separator + 1;
   if (!isAllDigits(servoToken) || !isAllDigits(angleToken)) {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
-  int servoIndex = servoToken.toInt() - 1;
-  int angle = angleToken.toInt();
+  int servoIndex = atoi(servoToken) - 1;
+  int angle = atoi(angleToken);
   if (servoIndex < 0 || servoIndex >= SERVO_COUNT) {
     return {PARSE_ERR_SERVO, servoIndex, angle};
   }
@@ -87,7 +113,12 @@ void loop() {
     return;
   }
 
-  ParsedCommand command = parseCommand();
+  char commandBuffer[SERIAL_BUFFER_SIZE];
+  size_t bytesRead = Serial.readBytesUntil('\n', commandBuffer, SERIAL_BUFFER_SIZE - 1);
+  commandBuffer[bytesRead] = '\0';
+  trimInPlace(commandBuffer);
+
+  ParsedCommand command = parseCommand(commandBuffer);
   if (command.result != PARSE_OK) {
     if (command.result == PARSE_ERR_FORMAT) {
       Serial.println(F("ERR: Invalid format"));
