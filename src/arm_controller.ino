@@ -97,7 +97,7 @@ ParsedCommand parseCommand(const char *line) {
 
   long servoValue = strtol(servoToken, NULL, 10);
   long angleValue = strtol(angleToken, NULL, 10);
-  if (servoValue > INT_MAX || angleValue > INT_MAX) {
+  if (servoValue < 0 || servoValue > INT_MAX || angleValue < 0 || angleValue > INT_MAX) {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
@@ -128,9 +128,9 @@ void loop() {
   }
 
   char commandBuffer[SERIAL_BUFFER_SIZE];
-  size_t bytesRead = Serial.readBytesUntil('\n', commandBuffer, SERIAL_BUFFER_SIZE - 1);
-  commandBuffer[bytesRead] = '\0';
-  if (bytesRead == SERIAL_BUFFER_SIZE - 1) {
+  size_t charsRead = Serial.readBytesUntil('\n', commandBuffer, SERIAL_BUFFER_SIZE - 1);
+  commandBuffer[charsRead] = '\0';
+  if (charsRead == SERIAL_BUFFER_SIZE - 1) {
     flushUntilNewline();
   }
   trimInPlace(commandBuffer);
