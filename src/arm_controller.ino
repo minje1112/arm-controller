@@ -3,6 +3,7 @@
 static const byte SERVO_COUNT = 4;
 static const byte SERVO_PINS[SERVO_COUNT] = {3, 5, 6, 9};
 static const byte DEFAULT_ANGLE = 90;
+static const unsigned long SERIAL_TIMEOUT_MS = 20;
 
 Servo servos[SERVO_COUNT];
 
@@ -27,11 +28,12 @@ void attachServos() {
 }
 
 bool isAllDigits(const String &value) {
-  if (value.length() == 0) {
+  unsigned int length = value.length();
+  if (length == 0) {
     return false;
   }
 
-  for (unsigned int i = 0; i < value.length(); i++) {
+  for (unsigned int i = 0; i < length; i++) {
     if (!isDigit(value.charAt(i))) {
       return false;
     }
@@ -48,6 +50,7 @@ ParsedCommand parseCommand() {
   }
 
   int separator = line.indexOf(':');
+  // Require at least one digit for servo token and angle token.
   if (separator <= 1 || separator >= (int)line.length() - 1) {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
@@ -74,7 +77,7 @@ ParsedCommand parseCommand() {
 void setup() {
   Serial.begin(115200);
   // Keep command reads responsive for short serial command lines.
-  Serial.setTimeout(20);
+  Serial.setTimeout(SERIAL_TIMEOUT_MS);
   attachServos();
   Serial.println(F("4-servo arm controller ready"));
 }
