@@ -5,11 +5,12 @@ static const byte SERVO_PINS[SERVO_COUNT] = {3, 5, 6, 9};
 static const byte DEFAULT_ANGLE = 90;
 
 Servo servos[SERVO_COUNT];
-byte currentAngles[SERVO_COUNT] = {
-  DEFAULT_ANGLE,
-  DEFAULT_ANGLE,
-  DEFAULT_ANGLE,
-  DEFAULT_ANGLE
+
+enum ParseResult {
+  PARSE_OK,
+  PARSE_ERR_FORMAT,
+  PARSE_ERR_SERVO,
+  PARSE_ERR_ANGLE
 };
 
 void attachServos() {
@@ -19,29 +20,29 @@ void attachServos() {
   }
 }
 
-bool parseCommand(int &servoIndex, int &angle) {
+ParseResult parseCommand(int &servoIndex, int &angle) {
   String line = Serial.readStringUntil('\n');
   line.trim();
-  if (line.length() < 4 || line.charAt(0) != 'S') {
-    return false;
+  if (line.length() < 3 || line.charAt(0) != 'S') {
+    return PARSE_ERR_FORMAT;
   }
 
   int separator = line.indexOf(':');
   if (separator <= 1 || separator == line.length() - 1) {
-    return false;
+    return PARSE_ERR_FORMAT;
   }
 
   servoIndex = line.substring(1, separator).toInt() - 1;
   angle = line.substring(separator + 1).toInt();
   if (servoIndex < 0 || servoIndex >= SERVO_COUNT) {
-    return false;
+    return PARSE_ERR_SERVO;
   }
 
   if (angle < 0 || angle > 180) {
-    return false;
+    return PARSE_ERR_ANGLE;
   }
 
-  return true;
+  return PARSE_OK;
 }
 
 void setup() {
@@ -58,12 +59,18 @@ void loop() {
 
   int servoIndex = -1;
   int angle = -1;
-  if (!parseCommand(servoIndex, angle)) {
-    Serial.println(F("ERR"));
+  ParseResult parseResult = parseCommand(servoIndex, angle);
+  if (parseResult != PARSE_OK) {
+    if (parseResult == PARSE_ERR_FORMAT) {
+      Serial.println(F("ERR: Invalid format"));
+    } else if (parseResult == PARSE_ERR_SERVO) {
+      Serial.println(F("ERR: Servo index out of range"));
+    } else {
+      Serial.println(F("ERR: Angle out of range"));
+    }
     return;
   }
 
-  currentAngles[servoIndex] = angle;
   servos[servoIndex].write(angle);
   Serial.print(F("OK S"));
   Serial.print(servoIndex + 1);
