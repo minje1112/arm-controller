@@ -32,13 +32,12 @@ void attachServos() {
 }
 
 bool isAllDigits(const char *value) {
-  unsigned int length = strlen(value);
-  if (length == 0) {
+  if (value[0] == '\0') {
     return false;
   }
 
-  for (unsigned int i = 0; i < length; i++) {
-    if (!isdigit((unsigned char)value[i])) {
+  for (const char *current = value; *current != '\0'; current++) {
+    if (!isdigit((unsigned char)*current)) {
       return false;
     }
   }
@@ -59,6 +58,14 @@ void trimInPlace(char *value) {
   size_t length = strlen(value);
   while (length > 0 && isspace((unsigned char)value[length - 1])) {
     value[--length] = '\0';
+  }
+}
+
+void flushUntilNewline() {
+  while (Serial.available()) {
+    if (Serial.read() == '\n') {
+      break;
+    }
   }
 }
 
@@ -116,6 +123,9 @@ void loop() {
   char commandBuffer[SERIAL_BUFFER_SIZE];
   size_t bytesRead = Serial.readBytesUntil('\n', commandBuffer, SERIAL_BUFFER_SIZE - 1);
   commandBuffer[bytesRead] = '\0';
+  if (bytesRead == SERIAL_BUFFER_SIZE - 1) {
+    flushUntilNewline();
+  }
   trimInPlace(commandBuffer);
 
   ParsedCommand command = parseCommand(commandBuffer);
