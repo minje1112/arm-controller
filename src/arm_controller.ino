@@ -26,7 +26,7 @@ void attachServos() {
   }
 }
 
-bool isDigits(const String &value) {
+bool isAllDigits(const String &value) {
   if (value.length() == 0) {
     return false;
   }
@@ -48,13 +48,13 @@ ParsedCommand parseCommand() {
   }
 
   int separator = line.indexOf(':');
-  if (separator <= 1 || separator == line.length() - 1) {
+  if (separator <= 1 || separator >= (int)line.length() - 1) {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
   String servoToken = line.substring(1, separator);
   String angleToken = line.substring(separator + 1);
-  if (!isDigits(servoToken) || !isDigits(angleToken)) {
+  if (!isAllDigits(servoToken) || !isAllDigits(angleToken)) {
     return {PARSE_ERR_FORMAT, 0, 0};
   }
 
@@ -88,7 +88,7 @@ void loop() {
     if (command.result == PARSE_ERR_FORMAT) {
       Serial.println(F("ERR: Invalid format"));
     } else if (command.result == PARSE_ERR_SERVO) {
-      Serial.println(F("ERR: Servo index out of range"));
+      Serial.println(F("ERR: Servo index out of range (1-4)"));
     } else {
       Serial.println(F("ERR: Angle out of range"));
     }
