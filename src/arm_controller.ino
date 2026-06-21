@@ -107,9 +107,6 @@ ParsedCommand parseCommand(const char *line) {
 
   int servoIndex = (int)servoValue - SERVO_INDEX_OFFSET;
   int angle = (int)angleValue;
-  if (servoIndex < 0 || servoIndex >= SERVO_COUNT) {
-    return {PARSE_ERR_SERVO, servoIndex, angle};
-  }
 
   return {PARSE_OK, servoIndex, angle};
 }
