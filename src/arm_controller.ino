@@ -13,6 +13,12 @@ enum ParseResult {
   PARSE_ERR_ANGLE
 };
 
+struct ParsedCommand {
+  ParseResult result;
+  int servoIndex;
+  int angle;
+};
+
 void attachServos() {
   for (byte i = 0; i < SERVO_COUNT; i++) {
     servos[i].attach(SERVO_PINS[i]);
@@ -20,29 +26,49 @@ void attachServos() {
   }
 }
 
-ParseResult parseCommand(int &servoIndex, int &angle) {
+bool isDigits(const String &value) {
+  if (value.length() == 0) {
+    return false;
+  }
+
+  for (unsigned int i = 0; i < value.length(); i++) {
+    if (!isDigit(value.charAt(i))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+ParsedCommand parseCommand() {
   String line = Serial.readStringUntil('\n');
   line.trim();
   if (line.length() < 3 || line.charAt(0) != 'S') {
-    return PARSE_ERR_FORMAT;
+    return {PARSE_ERR_FORMAT, 0, 0};
   }
 
   int separator = line.indexOf(':');
   if (separator <= 1 || separator == line.length() - 1) {
-    return PARSE_ERR_FORMAT;
+    return {PARSE_ERR_FORMAT, 0, 0};
   }
 
-  servoIndex = line.substring(1, separator).toInt() - 1;
-  angle = line.substring(separator + 1).toInt();
+  String servoToken = line.substring(1, separator);
+  String angleToken = line.substring(separator + 1);
+  if (!isDigits(servoToken) || !isDigits(angleToken)) {
+    return {PARSE_ERR_FORMAT, 0, 0};
+  }
+
+  int servoIndex = servoToken.toInt() - 1;
+  int angle = angleToken.toInt();
   if (servoIndex < 0 || servoIndex >= SERVO_COUNT) {
-    return PARSE_ERR_SERVO;
+    return {PARSE_ERR_SERVO, servoIndex, angle};
   }
 
   if (angle < 0 || angle > 180) {
-    return PARSE_ERR_ANGLE;
+    return {PARSE_ERR_ANGLE, servoIndex, angle};
   }
 
-  return PARSE_OK;
+  return {PARSE_OK, servoIndex, angle};
 }
 
 void setup() {
@@ -57,13 +83,11 @@ void loop() {
     return;
   }
 
-  int servoIndex = -1;
-  int angle = -1;
-  ParseResult parseResult = parseCommand(servoIndex, angle);
-  if (parseResult != PARSE_OK) {
-    if (parseResult == PARSE_ERR_FORMAT) {
+  ParsedCommand command = parseCommand();
+  if (command.result != PARSE_OK) {
+    if (command.result == PARSE_ERR_FORMAT) {
       Serial.println(F("ERR: Invalid format"));
-    } else if (parseResult == PARSE_ERR_SERVO) {
+    } else if (command.result == PARSE_ERR_SERVO) {
       Serial.println(F("ERR: Servo index out of range"));
     } else {
       Serial.println(F("ERR: Angle out of range"));
@@ -71,9 +95,9 @@ void loop() {
     return;
   }
 
-  servos[servoIndex].write(angle);
+  servos[command.servoIndex].write(command.angle);
   Serial.print(F("OK S"));
-  Serial.print(servoIndex + 1);
+  Serial.print(command.servoIndex + 1);
   Serial.print(F(":"));
-  Serial.println(angle);
+  Serial.println(command.angle);
 }
