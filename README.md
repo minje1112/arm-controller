@@ -19,7 +19,7 @@ Arduino Uno R3 repository for controlling a 4-servo robotic arm.
 
 ## Sketch
 
-Upload `/home/runner/work/arm-controller/arm-controller/src/arm_controller.ino` to the Arduino Uno R3.
+Upload `src/arm_controller.ino` to the Arduino Uno R3.
 
 Default servo position is 90 degrees for all four joints.
 
